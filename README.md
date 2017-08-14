@@ -67,7 +67,7 @@ In this step, we need to generate the new N instance particles with random Gauss
 
 
 
-**STEP 2- Predict the particles:**
+**STEP 2- Move the particles:**
 
 _Motion Model_
 
@@ -97,7 +97,7 @@ _Motion Model_
 ```
 
 
-**STEP 2- Compute the weight for each particle:**
+**STEP 3- Compute the weight for each particle:**
 
 We then compute the weight for each particle based on the actual measurements(sense_observations_x,sense_observations_y)  
 and the global map ("../data/map_data.txt") for x,y landmark positions.
@@ -130,7 +130,7 @@ for each PARTICLE
 ```	
 
 
-**STEP 3- Particle Resampling:**  
+**STEP 4- Resampling the particles:**  
 
 Resampling wheel method 
 ```sh
