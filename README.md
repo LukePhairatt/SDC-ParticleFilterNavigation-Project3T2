@@ -6,15 +6,156 @@
 
 # Overview
 This repository contains all the code needed to complete the final project for the Localization course in Udacity's Self-Driving Car Nanodegree.
-The weight update uses the x,y lankmark to the x,y measurement association approach and low variance resampling wheel.
-
-## Submission
-All you will submit is your completed version of `particle_filter.cpp`, which is located in the `src` directory. You should probably do a `git pull` before submitting to verify that your project passes the most up-to-date version of the grading code (there are some parameters in `src/main.cpp` which govern the requirements on accuracy and run time.)
 
 ## Project Introduction
 Your robot has been kidnapped and transported to a new location! Luckily it has a map of this location, a (noisy) GPS estimate of its initial location, and lots of (noisy) sensor and control data.
 
-In this project you will implement a 2 dimensional particle filter in C++. Your particle filter will be given a map and some initial localization information (analogous to what a GPS would provide). At each time step your filter will also get observation and control data. 
+In this project you will implement a 2 dimensional particle filter in C++. Your particle filter will be given a map and some initial localization information (analogous to what a GPS would provide). At each time step your filter will also get observation and control data.
+
+The message from the simulator contains following information:
+
+
+```sh
+	Y
+	^
+        |                       
+        |           y
+        |           ^     
+        |           |  [landmark] (sense_obs_x,sense_obs_y)
+        |           |   /
+        |           |  /
+        |           | /    
+        |           |/  
+        |           ------------> x 
+        |      a current robot position (sense_x,sense_y, sense_heading)
+	|      (measurement given in the robot frame, measurement/observation is transformed to the global space)
+        |
+	------------> X
+	Global coordibnate 
+
+```
+
+```sh
+		# robot state
+		time = time stamp
+		sense_x = current x position 
+		sense_y = current y position
+		sense_theta = current heading position
+		previous_velocity = (previous) velocity             (robot path control)
+		previous_yawrate  = (previous) angular velocity     (robot path control)
+		
+		# observations in JSON format [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}]
+		sense_obs_x = landmark i x-position
+		sense_obs_y = landmark i y-position
+```
+
+# **Particle Filter Summary**
+
+**STEP 1- Init the particles:**  
+
+In this step, we need to generate the new N instance particles with random Gaussian noise
+
+```sh
+	for i particles
+		particles[i].id = i;
+		particles[i].x = genGaussian.RandomNormalGaussian(x, std[0]);
+		particles[i].y = genGaussian.RandomNormalGaussian(y, std[1]);
+		particles[i].theta = genGaussian.RandomNormalGaussian(theta, std[2]);
+		particles[i].weight = 1.0;
+
+```
+
+
+
+**STEP 2- Predict the particles:**
+
+_Motion Model_
+
+```sh
+
+		velxdt = velocity * delta_t;
+		yawxdt = yaw_rate * delta_t;
+
+		for each particle
+			# no angular motion
+			particles[i].x += velxdt * cos(particles[i].theta);
+			particles[i].y += velxdt * sin(particles[i].theta);
+		
+			# with angular motion (yaw_rate not 0)
+			theta_new = particles[i].theta + yawxdt;
+			particles[i].x += velocity / yaw_rate * (sin(theta_new) - sin(particles[i].theta));
+			particles[i].y += velocity / yaw_rate * (-cos(theta_new) + cos(particles[i].theta));
+			particles[i].theta = theta_new;
+
+		
+
+		// add noise around this predicted state
+		particles[i].x = genGaussian.RandomNormalGaussian(particles[i].x, std_pos[0]);
+		particles[i].y = genGaussian.RandomNormalGaussian(particles[i].y, std_pos[1]);
+		particles[i].theta = genGaussian.RandomNormalGaussian(particles[i].theta, std_pos[2]);
+	
+```
+
+
+**STEP 2- Compute the weight for each particle:**
+
+We then compute the weight for each particle based on the actual measurements(sense_observations_x,sense_observations_y)  
+and the global map ("../data/map_data.txt") for x,y landmark positions.
+
+```sh
+for each PARTICLE
+
+	1- transform the given landmark measurement to the global space from this particle pose
+
+		tx = observations[Obs].x;
+		ty = observations[Obs].y;
+		observations_world[Obs].x = tx*cos_heading - ty*sin_heading + px; // world coordinate
+		observations_world[Obs].y = tx*sin_heading + ty*cos_heading + py; // world coordinate
+
+	for each MEASUREMENT(in the global space)
+		
+		2- find the best match (Nearest Neighbour Search, see comments in particle_filter.cpp for further details)
+
+			Minimum distance error between the given landmark measurement and the map
+			(for all landmarks, find the nearest match measurement)
+
+
+		3- compute corresponding likelihood/weight for all measurement
+
+			sum_weights += diff_x * diff_x / var_x + diff_y * diff_y / var_y;
+
+		   where
+			var_x = std_landmark_x**2
+			var_y = std_landmark_y**2                        
+```	
+
+
+**STEP 3- Particle Resampling:**  
+
+Resampling wheel method 
+```sh
+		std::vector<Particle> new_particles;
+		std::random_device rd;     
+	    	std::mt19937 gen(rd()); 
+		std::uniform_real_distribution<double> uni(0.0,1.0);     
+	    	int index = int(uni(gen)*num_particles);
+	    	double beta = 0.0;
+	    	double mw = *std::max_element(weights.begin(), weights.end());
+	    	for(int i=0;i<num_particles;++i){
+		  beta += uni(gen) * 2.0 * mw;
+
+		  while (beta > weights[index]){
+		    beta -= weights[index];
+		    index = fmod((index+1),num_particles);
+		  }// end while	
+
+		  new_particles.push_back(particles[index]);
+		}// end for
+	
+		// new particles resampled
+		particles = new_particles;
+
+```
 
 ## Running the Code
 This project involves the Term 2 Simulator which can be downloaded [here](https://github.com/udacity/self-driving-car-sim/releases)
