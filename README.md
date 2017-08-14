@@ -4,7 +4,7 @@
 [//]: # (Image References)
 [image0]: ./image/pf_sim.png "result"
 
-# Overview
+## Overview
 This repository contains all the code needed to complete the final project for the Localization course in Udacity's Self-Driving Car Nanodegree.
 
 ## Project Introduction
@@ -49,7 +49,7 @@ The message from the simulator contains following information:
 		sense_obs_y = landmark i y-position
 ```
 
-# **Particle Filter Summary**
+## **Particle Filter Summary**
 
 **STEP 1- Init the particles:**  
 
